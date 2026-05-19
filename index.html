@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>減脂追蹤 — 紀秉辰</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', sans-serif; background: #f5f5f0; color: #1a1a1a; min-height: 100vh; }
+  .app { max-width: 480px; margin: 0 auto; padding: 16px; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 16px 20px; background: #1a1a1a; border-radius: 16px; color: white; }
+  .header-title { font-size: 18px; font-weight: 600; }
+  .header-sub { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+  .header-goal { text-align: right; font-size: 12px; color: rgba(255,255,255,0.6); }
+  .header-goal span { font-size: 20px; font-weight: 600; color: #4ade80; display: block; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; background: #e8e8e3; border-radius: 12px; padding: 4px; }
+  .tab { flex: 1; padding: 8px; text-align: center; font-size: 13px; font-weight: 500; border-radius: 9px; cursor: pointer; border: none; background: transparent; color: #666; transition: all 0.2s; }
+  .tab.active { background: white; color: #1a1a1a; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+
+  .card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+  .card-title { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 12px; }
+
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .metric-box { background: #f5f5f0; border-radius: 12px; padding: 14px; }
+  .metric-label { font-size: 11px; color: #888; margin-bottom: 6px; }
+  .metric-input { width: 100%; font-size: 24px; font-weight: 700; border: none; background: transparent; color: #1a1a1a; outline: none; }
+  .metric-unit { font-size: 13px; color: #999; font-weight: 400; }
+
+  .food-item, .ex-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #f9f9f7; border-radius: 8px; margin-bottom: 6px; }
+  .food-name { font-size: 13px; color: #1a1a1a; }
+  .food-protein { font-size: 12px; color: #888; }
+  .remove-btn { background: none; border: none; cursor: pointer; color: #ccc; font-size: 18px; line-height: 1; padding: 0 4px; }
+  .remove-btn:hover { color: #e24b4b; }
+
+  .add-row { display: flex; gap: 8px; margin-top: 8px; }
+  select, input[type="text"], input[type="number"] { font-family: inherit; font-size: 13px; padding: 8px 10px; border: 1.5px solid #e8e8e3; border-radius: 10px; background: white; color: #1a1a1a; outline: none; }
+  select:focus, input:focus { border-color: #1a1a1a; }
+  select { flex: 1; }
+
+  .add-btn { padding: 8px 16px; font-size: 13px; font-weight: 500; border-radius: 10px; border: 1.5px solid #e8e8e3; background: white; color: #1a1a1a; cursor: pointer; white-space: nowrap; }
+  .add-btn:hover { background: #f5f5f0; }
+
+  .protein-total { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f0ec; }
+  .protein-label { font-size: 13px; color: #888; }
+  .protein-value { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+  .progress-bar { height: 6px; background: #f0f0ec; border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s, background 0.3s; }
+
+  .save-btn { width: 100%; padding: 14px; font-size: 15px; font-weight: 600; border-radius: 12px; border: none; background: #1a1a1a; color: white; cursor: pointer; margin-top: 4px; transition: opacity 0.2s; }
+  .save-btn:hover { opacity: 0.85; }
+  .save-msg { text-align: center; font-size: 13px; color: #4ade80; margin-top: 8px; display: none; }
+
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .stat-box { background: white; border-radius: 12px; padding: 14px; text-align: center; }
+  .stat-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+  .stat-value { font-size: 20px; font-weight: 700; color: #1a1a1a; }
+  .stat-value.green { color: #16a34a; }
+
+  .history-item { background: white; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+  .history-date { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 6px; }
+  .history-metrics { display: flex; gap: 16px; flex-wrap: wrap; }
+  .history-metric { font-size: 12px; color: #888; }
+  .history-metric strong { color: #1a1a1a; }
+  .history-exercises { font-size: 12px; color: #aaa; margin-top: 4px; }
+  .history-note { font-size: 12px; color: #bbb; margin-top: 2px; font-style: italic; }
+  .empty { text-align: center; color: #aaa; font-size: 14px; padding: 40px 0; }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .note-row { display: flex; gap: 8px; margin-top: 8px; }
+  .note-row input { flex: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div>
+      <div class="header-title">減脂追蹤</div>
+      <div class="header-sub">紀秉辰 · 168cm · 36歲</div>
+    </div>
+    <div class="header-goal">
+      目標體重
+      <span>68 kg</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('record',this)">記錄今日</button>
+    <button class="tab" onclick="showTab('chart',this)">圖表</button>
+    <button class="tab" onclick="showTab('history',this)">紀錄</button>
+  </div>
+
+  <!-- 記錄 -->
+  <div id="tab-record" class="tab-content active">
+    <div class="metric-grid">
+      <div class="metric-box">
+        <div class="metric-label">體重</div>
+        <input class="metric-input" type="number" id="inp-weight" step="0.1" placeholder="88.7">
+        <div class="metric-unit">公斤</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">體脂</div>
+        <input class="metric-input" type="number" id="inp-fat" step="0.1" placeholder="34.9">
+        <div class="metric-unit">%</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">飲食記錄</div>
+      <div id="food-list"></div>
+      <div class="add-row">
+        <select id="food-select">
+          <option value="">選擇食物...</option>
+          <option value="水煮蛋|6">水煮蛋 (1顆) — 6g蛋白質</option>
+          <option value="無糖豆漿|7">無糖豆漿 (1包) — 7g蛋白質</option>
+          <option value="雞胸肉沙拉|25">雞胸肉沙拉 — 25g蛋白質</option>
+          <option value="茶葉蛋|6">茶葉蛋 (1顆) — 6g蛋白質</option>
+          <option value="鮪魚御飯糰|8">鮪魚御飯糰 — 8g蛋白質</option>
+          <option value="雞腿便當|25">雞腿便當 — 25g蛋白質</option>
+          <option value="嫩豆腐|8">嫩豆腐 (1盒) — 8g蛋白質</option>
+          <option value="乳清蛋白|25">乳清蛋白 (1份) — 25g蛋白質</option>
+          <option value="起司片|4">起司片 (1片) — 4g蛋白質</option>
+          <option value="鮭魚|20">鮭魚 (100g) — 20g蛋白質</option>
+        </select>
+        <button class="add-btn" onclick="addFood()">新增</button>
+      </div>
+      <div class="protein-total">
+        <span class="protein-label">今日蛋白質</span>
+        <span class="protein-value" id="protein-total">0 / 130g</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="protein-bar" style="width:0%; background:#e24b4b;"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">運動記錄</div>
+      <div id="ex-list"></div>
+      <div class="add-row">
+        <select id="ex-select">
+          <option value="">選擇運動...</option>
+          <optgroup label="健身房">
+            <option value="腿推機">腿推機</option>
+            <option value="胸推機">胸推機</option>
+            <option value="坐姿划船機">坐姿划船機</option>
+            <option value="肩推機">肩推機</option>
+            <option value="跑步機有氧">跑步機有氧</option>
+            <option value="橢圓機">橢圓機</option>
+          </optgroup>
+          <optgroup label="居家">
+            <option value="深蹲">深蹲</option>
+            <option value="伏地挺身">伏地挺身</option>
+            <option value="棒式撐地">棒式撐地</option>
+            <option value="啞鈴彎舉">啞鈴彎舉</option>
+          </optgroup>
+        </select>
+        <input type="text" id="ex-sets" placeholder="3組x12下" style="width:110px;">
+        <button class="add-btn" onclick="addExercise()">新增</button>
+      </div>
+    </div>
+
+    <div class="note-row">
+      <input type="text" id="note-input" placeholder="備注（可選）" style="flex:1;">
+    </div>
+
+    <button class="save-btn" onclick="saveToday()">儲存今日</button>
+    <div class="save-msg" id="save-msg">✓ 已儲存！</div>
+  </div>
+
+  <!-- 圖表 -->
+  <div id="tab-chart" class="tab-content">
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">起始體重</div>
+        <div class="stat-value">92 kg</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">目前體重</div>
+        <div class="stat-value" id="stat-current">88.7 kg</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">已減</div>
+        <div class="stat-value green" id="stat-lost">-3.3 kg</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">體重趨勢 (kg)</div>
+      <canvas id="weight-chart" height="180"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">體脂趨勢 (%)</div>
+      <canvas id="fat-chart" height="180"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">每日蛋白質 (g)</div>
+      <canvas id="protein-chart" height="180"></canvas>
+    </div>
+  </div>
+
+  <!-- 紀錄 -->
+  <div id="tab-history" class="tab-content">
+    <div id="history-list"></div>
+    <div class="empty" id="history-empty" style="display:none;">還沒有紀錄，去記錄頁填寫今日數據</div>
+  </div>
+
+</div>
+
+<script>
+let todayFoods = [];
+let todayExercises = [];
+let totalProtein = 0;
+let wChart, fChart, pChart;
+
+function getRecords() {
+  try { return JSON.parse(localStorage.getItem('jpc_fitness') || '[]'); } catch(e) { return []; }
+}
+function saveRecords(r) {
+  localStorage.setItem('jpc_fitness', JSON.stringify(r));
+}
+
+function showTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  btn.classList.add('active');
+  if(tab==='chart') renderCharts();
+  if(tab==='history') renderHistory();
+}
+
+function addFood() {
+  const sel = document.getElementById('food-select');
+  if(!sel.value) return;
+  const [name, protein] = sel.value.split('|');
+  todayFoods.push({name, protein: parseInt(protein)});
+  totalProtein += parseInt(protein);
+  renderFoodList();
+  sel.value = '';
+}
+
+function removeFood(i) {
+  totalProtein -= todayFoods[i].protein;
+  todayFoods.splice(i, 1);
+  renderFoodList();
+}
+
+function renderFoodList() {
+  const list = document.getElementById('food-list');
+  list.innerHTML = todayFoods.map((f,i) => `
+    <div class="food-item">
+      <span class="food-name">${f.name}</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="food-protein">${f.protein}g蛋白質</span>
+        <button class="remove-btn" onclick="removeFood(${i})">×</button>
+      </div>
+    </div>
+  `).join('');
+  const pct = Math.min(100, Math.round(totalProtein / 130 * 100));
+  document.getElementById('protein-total').textContent = totalProtein + ' / 130g';
+  const bar = document.getElementById('protein-bar');
+  bar.style.width = pct + '%';
+  bar.style.background = totalProtein >= 130 ? '#16a34a' : totalProtein >= 80 ? '#f59e0b' : '#e24b4b';
+}
+
+function addExercise() {
+  const sel = document.getElementById('ex-select');
+  const sets = document.getElementById('ex-sets').value;
+  if(!sel.value) return;
+  todayExercises.push({name: sel.value, sets: sets || '完成'});
+  renderExList();
+  sel.value = '';
+  document.getElementById('ex-sets').value = '';
+}
+
+function removeExercise(i) {
+  todayExercises.splice(i, 1);
+  renderExList();
+}
+
+function renderExList() {
+  const list = document.getElementById('ex-list');
+  list.innerHTML = todayExercises.map((e,i) => `
+    <div class="ex-item">
+      <span class="food-name">${e.name}</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="food-protein">${e.sets}</span>
+        <button class="remove-btn" onclick="removeExercise(${i})">×</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function saveToday() {
+  const weight = parseFloat(document.getElementById('inp-weight').value) || null;
+  const fat = parseFloat(document.getElementById('inp-fat').value) || null;
+  const note = document.getElementById('note-input').value;
+  if(!weight && !fat) { alert('請至少輸入體重或體脂！'); return; }
+  const today = new Date().toLocaleDateString('zh-TW');
+  const records = getRecords();
+  const idx = records.findIndex(r => r.date === today);
+  const record = { date: today, weight, fat, protein: totalProtein, foods: [...todayFoods], exercises: [...todayExercises], note };
+  if(idx >= 0) records[idx] = record;
+  else records.push(record);
+  saveRecords(records);
+  const msg = document.getElementById('save-msg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2500);
+  todayFoods = []; todayExercises = []; totalProtein = 0;
+  renderFoodList(); renderExList();
+  document.getElementById('inp-weight').value = '';
+  document.getElementById('inp-fat').value = '';
+  document.getElementById('note-input').value = '';
+}
+
+function renderCharts() {
+  const records = getRecords();
+  const wData = records.filter(r => r.weight).map(r => ({ x: r.date, y: r.weight }));
+  const fData = records.filter(r => r.fat).map(r => ({ x: r.date, y: r.fat }));
+  const pData = records.filter(r => r.protein).map(r => ({ x: r.date, y: r.protein }));
+
+  if(wData.length) {
+    const last = wData[wData.length-1];
+    document.getElementById('stat-current').textContent = last.y.toFixed(1) + ' kg';
+    document.getElementById('stat-lost').textContent = '-' + (92 - last.y).toFixed(1) + ' kg';
+  }
+
+  const makeChart = (id, label, color, data, min, max) => {
+    const ctx = document.getElementById(id).getContext('2d');
+    return new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: [{
+          label, data: data.length ? data : [{ x: '起始', y: min + (max-min)*0.8 }],
+          borderColor: color, backgroundColor: color + '22',
+          tension: 0.4, pointRadius: 5, pointBackgroundColor: color, fill: true,
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { type: 'category', grid: { color: '#f0f0ec' }, ticks: { font: { size: 11 }, color: '#aaa' } },
+          y: { min, max, grid: { color: '#f0f0ec' }, ticks: { font: { size: 11 }, color: '#aaa' } }
+        }
+      }
+    });
+  };
+
+  if(wChart) wChart.destroy();
+  if(fChart) fChart.destroy();
+  if(pChart) pChart.destroy();
+  wChart = makeChart('weight-chart', '體重', '#3b82f6', wData, 60, 95);
+  fChart = makeChart('fat-chart', '體脂', '#ef4444', fData, 15, 40);
+  pChart = makeChart('protein-chart', '蛋白質', '#16a34a', pData, 0, 150);
+}
+
+function renderHistory() {
+  const records = getRecords().slice().reverse();
+  const list = document.getElementById('history-list');
+  const empty = document.getElementById('history-empty');
+  if(!records.length) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  list.innerHTML = records.map(r => `
+    <div class="history-item">
+      <div class="history-date">${r.date}</div>
+      <div class="history-metrics">
+        ${r.weight ? `<span class="history-metric">體重 <strong>${r.weight.toFixed(1)}kg</strong></span>` : ''}
+        ${r.fat ? `<span class="history-metric">體脂 <strong>${r.fat.toFixed(1)}%</strong></span>` : ''}
+        ${r.protein ? `<span class="history-metric">蛋白質 <strong style="color:#16a34a;">${r.protein}g</strong></span>` : ''}
+      </div>
+      ${r.exercises && r.exercises.length ? `<div class="history-exercises">運動：${r.exercises.map(e => e.name+'('+e.sets+')').join('、')}</div>` : ''}
+      ${r.note ? `<div class="history-note">${r.note}</div>` : ''}
+    </div>
+  `).join('');
+}
+</script>
+</body>
+</html>
